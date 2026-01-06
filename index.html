@@ -14,6 +14,8 @@
             --img-width: 120px;
             --img-height: 120px;
             --border-radius: 12px;
+            --chart-size: 300px;
+            --chart-title-size: 2rem;
         }
 
         body {
@@ -27,6 +29,25 @@
             min-height: 100vh;
             margin: 0;
             padding: 20px;
+        }
+
+        #chart-title {
+            font-size: var(--chart-title-size);
+            font-weight: bold;
+            color: var(--accent-color);
+            margin-bottom: 10px;
+        }
+
+        #chart-container {
+            width: var(--chart-size);
+            height: var(--chart-size);
+            margin-bottom: 40px;
+            position: relative;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
         }
 
         .grid-container {
@@ -167,6 +188,11 @@
 </head>
 <body>
 
+    <div id="chart-title">핀볼 승률(예상)</div>
+    <div id="chart-container">
+        <canvas id="win-rate-chart"></canvas>
+    </div>
+
     <div class="grid-container" id="grid">
         <!-- JS will populate this -->
     </div>
@@ -197,7 +223,7 @@
 
     <script>
         // Google Sheets Configuration (To be implemented)
-        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxhz1ZsbrYYMnft1NNNAtLAmS34A1lqfzrYiAcfDy5888X54_F5U4S2NZSWPz4M9HJ0Ig/exec';
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbytJuRy96gTk4IP5N-KJUQ3yP2cN3GqTIGlvTsaQfe0I0FxmKo4TIdQMGX3tnIeUn4sTA/exec';
 
         const users = [
             { name: '밤베', img: './assets/밤베.png' },
@@ -211,6 +237,7 @@
 
         let state = {};
         let excludedState = {}; // Track excluded users: { name: boolean }
+        let chartColors = {}; // { name: { bg: string, text: string } }
 
         function playSound(id) {
             const audio = document.getElementById(id);
@@ -239,7 +266,76 @@
         users.forEach(user => {
             state[user.name] = 0;
             excludedState[user.name] = false;
+            chartColors[user.name] = { bg: '#333', text: '#fff' }; // Default colors
         });
+
+        function drawChart() {
+            const canvas = document.getElementById('win-rate-chart');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            
+            // Set canvas resolution
+            const size = 300; // Match CSS --chart-size roughly or higher for retina
+            canvas.width = size;
+            canvas.height = size;
+            
+            const centerX = size / 2;
+            const centerY = size / 2;
+            const radius = size / 2;
+
+            // Calculate weights: count + 1 (0 treated as 1+0=1)
+            const weights = users.map(user => state[user.name] + 1);
+            const totalWeight = weights.reduce((a, b) => a + b, 0);
+
+            let startAngle = -0.5 * Math.PI; // Start at top
+
+            ctx.clearRect(0, 0, size, size);
+
+            users.forEach((user, i) => {
+                const weight = state[user.name] + 1;
+                const sliceAngle = (weight / totalWeight) * 2 * Math.PI;
+                const endAngle = startAngle + sliceAngle;
+                
+                // Draw Slice
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY);
+                ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+                ctx.fillStyle = chartColors[user.name]?.bg || '#555';
+                ctx.fill();
+                ctx.strokeStyle = varCss('--bg-color'); // Separator
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Draw Text (Percentage and Name)
+                const percentage = ((weight / totalWeight) * 100).toFixed(1) + '%';
+                const label = `${user.name} (${percentage})`;
+                
+                // Text position
+                const midAngle = startAngle + sliceAngle / 2;
+                const textRadius = radius * 0.7;
+                const textX = centerX + Math.cos(midAngle) * textRadius;
+                const textY = centerY + Math.sin(midAngle) * textRadius;
+
+                ctx.fillStyle = chartColors[user.name]?.text || '#fff';
+                ctx.font = 'bold 12px Pretendard';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                
+                // Only draw text if slice is big enough
+                if (sliceAngle > 0.15) {
+                    // Split into two lines if needed or single line
+                    ctx.fillText(user.name, textX, textY - 8);
+                    ctx.fillText(percentage, textX, textY + 8);
+                }
+
+                startAngle = endAngle;
+            });
+        }
+        
+        // Helper to get CSS var
+        function varCss(name) {
+            return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+        }
 
         function render() {
             const grid = document.getElementById('grid');
@@ -256,6 +352,8 @@
                     </div>
                 </div>
             `}).join('');
+            
+            drawChart(); // Update chart on render
         }
 
         function toggleExclude(name) {
@@ -269,10 +367,15 @@
             state[name] = newVal;
             document.getElementById(`count-${name}`).innerText = newVal;
             playSound('sound-updown');
+            drawChart(); // Real-time update
         }
 
         async function saveData() {
             playSound('sound-save');
+            const btnSave = document.querySelector('button[onclick="saveData()"]');
+            const originalText = btnSave.innerText;
+            btnSave.innerText = '저장 중...';
+            btnSave.disabled = true;
             showLoading('저장 중...');
 
             const timestamp = Date.now();
@@ -301,10 +404,14 @@
                     console.error('Google Sheets save error:', err);
                     alert('저장 중 오류가 발생했습니다.');
                 } finally {
+                    btnSave.innerText = originalText;
+                    btnSave.disabled = false;
                     hideLoading();
                 }
             } else {
                 alert('저장 실패: Google Script URL 미설정');
+                btnSave.innerText = originalText;
+                btnSave.disabled = false;
                 hideLoading();
             }
         }
@@ -334,6 +441,10 @@
                     
                     if (result && result.updatedAt) {
                         cloudData = result;
+                    }
+                    // Color data fetch
+                    if (result && result.colors) {
+                        chartColors = { ...chartColors, ...result.colors };
                     }
                 } catch (err) {
                     console.warn('Google Sheets 로드 실패:', err);
