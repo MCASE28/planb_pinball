@@ -169,7 +169,7 @@
         // Supabase Configuration - Fill these with your actual keys
         const SUPABASE_URL = 'https://lgdszxwzbxbtdkjqwyfb.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_1EiLRZlSt1sYv1ZvPt6IvQ_heBLjClv';
-        const supabase = (SUPABASE_URL !== 'YOUR_SUPABASE_URL') ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+        const supabaseClient = (SUPABASE_URL !== 'YOUR_SUPABASE_URL' && typeof supabase !== 'undefined') ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 
         const users = [
             { name: '밤베', img: './assets/밤베.png' },
@@ -220,9 +220,9 @@
             localStorage.setItem('pinball_stats', JSON.stringify(dataToSave));
 
             // Supabase Save (if configured)
-            if (supabase) {
+            if (supabaseClient) {
                 try {
-                    const { data, error } = await supabase
+                    const { data, error } = await supabaseClient
                         .from('pinball_data')
                         .upsert({ id: 1, ...dataToSave }); // Assuming a single row for simple global state
                     
@@ -240,9 +240,9 @@
         async function loadData() {
             let localData = JSON.parse(localStorage.getItem('pinball_stats'));
             
-            if (supabase) {
+            if (supabaseClient) {
                 try {
-                    const { data, error } = await supabase
+                    const { data, error } = await supabaseClient
                         .from('pinball_data')
                         .select('*')
                         .eq('id', 1)
