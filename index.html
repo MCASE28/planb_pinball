@@ -178,6 +178,10 @@
 
     <a href="https://lazygyu.github.io/roulette/" target="_blank" class="btn-nav" onclick="copyToClipboard()">▶핀볼타러 가기◀</a>
 
+    <audio id="sound-updown" src="./assets/updown.mp3"></audio>
+    <audio id="sound-save" src="./assets/save.mp3"></audio>
+    <audio id="sound-clip" src="./assets/clip.mp3"></audio>
+
     <script>
         // Google Sheets Configuration (To be implemented)
         const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbycoDmoYgU3zaG3RiGUeKK6NMP8pc1QiOOu6ZQZnCpIomuJGk6M61KpCmExWsGyILNcjw/exec';
@@ -194,6 +198,14 @@
 
         let state = {};
         let excludedState = {}; // Track excluded users: { name: boolean }
+
+        function playSound(id) {
+            const audio = document.getElementById(id);
+            if (audio) {
+                audio.currentTime = 0;
+                audio.play().catch(e => console.warn('Audio play blocked:', e));
+            }
+        }
 
         // Initialize state
         users.forEach(user => {
@@ -227,9 +239,11 @@
             const newVal = Math.max(0, state[name] + delta);
             state[name] = newVal;
             document.getElementById(`count-${name}`).innerText = newVal;
+            playSound('sound-updown');
         }
 
         async function saveData() {
+            playSound('sound-save');
             const timestamp = Date.now();
             const dataToSave = {
                 values: state,
@@ -241,7 +255,7 @@
             localStorage.setItem('pinball_stats', JSON.stringify(dataToSave));
 
             // Google Sheets Save
-            if (GOOGLE_SCRIPT_URL !== 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL') {
+            if (GOOGLE_SCRIPT_URL) {
                 try {
                     // Use no-cors mode or text/plain to avoid preflight if script is simple
                     // Standard way: POST with text/plain body to avoid CORS options preflight on GAS
@@ -268,7 +282,7 @@
             let localData = JSON.parse(localStorage.getItem('pinball_stats'));
             let cloudData = null;
             
-            if (GOOGLE_SCRIPT_URL !== 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL') {
+            if (GOOGLE_SCRIPT_URL) {
                 try {
                     const response = await fetch(GOOGLE_SCRIPT_URL);
                     const result = await response.json();
@@ -297,6 +311,7 @@
         }
 
         function copyToClipboard() {
+            playSound('sound-clip');
             const result = users
                 .filter(user => !excludedState[user.name]) // Exclude grayed out users
                 .filter(user => state[user.name] > 0) // Exclude users with count 0
