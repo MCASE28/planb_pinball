@@ -184,7 +184,7 @@
 
     <script>
         // Google Sheets Configuration (To be implemented)
-        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzyNokzJmH2mjzT9sDLFATtPihDqc99CQEfjUFdKbh8CHu3rR_qcFXY3HbP71-TaZXosA/exec';
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz_wmGEDCGWlXSrJ80njluWvxTyMe2GavHbvhNrvoRSr5Jj9xQhcRfLd2UiUdR94-lKKg/exec';
 
         const users = [
             { name: '밤베', img: './assets/밤베.png' },
@@ -244,6 +244,11 @@
 
         async function saveData() {
             playSound('sound-save');
+            const btnSave = document.querySelector('button[onclick="saveData()"]');
+            const originalText = btnSave.innerText;
+            btnSave.innerText = '저장 중...';
+            btnSave.disabled = true;
+
             const timestamp = Date.now();
             const dataToSave = {
                 values: state,
@@ -269,9 +274,14 @@
                 } catch (err) {
                     console.error('Google Sheets save error:', err);
                     alert('저장 중 오류가 발생했습니다.');
+                } finally {
+                    btnSave.innerText = originalText;
+                    btnSave.disabled = false;
                 }
             } else {
                 alert('저장 실패: Google Script URL 미설정');
+                btnSave.innerText = originalText;
+                btnSave.disabled = false;
             }
         }
 
