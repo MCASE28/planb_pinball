@@ -181,6 +181,19 @@
     <audio id="sound-updown" src="./assets/updown.mp3"></audio>
     <audio id="sound-save" src="./assets/save.mp3"></audio>
     <audio id="sound-clip" src="./assets/clip.mp3"></audio>
+    <audio id="sound-nope" src="./assets/nope.mp3"></audio>
+
+    <div id="loading-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(10, 25, 47, 0.9); z-index: 1000; justify-content: center; align-items: center; flex-direction: column;">
+        <div style="width: 50px; height: 50px; border: 5px solid var(--accent-color); border-top: 5px solid transparent; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px;"></div>
+        <span style="color: var(--accent-color); font-size: 1.5rem; font-weight: bold;">불러오는 중...</span>
+    </div>
+
+    <style>
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
 
     <script>
         // Google Sheets Configuration (To be implemented)
@@ -204,6 +217,21 @@
             if (audio) {
                 audio.currentTime = 0;
                 audio.play().catch(e => console.warn('Audio play blocked:', e));
+            }
+        }
+
+        function showLoading(msg = '로딩 중...') {
+            const overlay = document.getElementById('loading-overlay');
+            if (overlay) {
+                overlay.querySelector('span').innerText = msg;
+                overlay.style.display = 'flex';
+            }
+        }
+
+        function hideLoading() {
+            const overlay = document.getElementById('loading-overlay');
+            if (overlay) {
+                overlay.style.display = 'none';
             }
         }
 
@@ -231,6 +259,7 @@
         }
 
         function toggleExclude(name) {
+            playSound('sound-nope');
             excludedState[name] = !excludedState[name];
             render(); // Re-render to update UI
         }
@@ -244,15 +273,12 @@
 
         async function saveData() {
             playSound('sound-save');
-            const btnSave = document.querySelector('button[onclick="saveData()"]');
-            const originalText = btnSave.innerText;
-            btnSave.innerText = '저장 중...';
-            btnSave.disabled = true;
+            showLoading('저장 중...');
 
             const timestamp = Date.now();
             const dataToSave = {
                 values: state,
-                excluded: excludedState,
+                // excluded state is not saved
                 updatedAt: timestamp
             };
 
@@ -275,17 +301,17 @@
                     console.error('Google Sheets save error:', err);
                     alert('저장 중 오류가 발생했습니다.');
                 } finally {
-                    btnSave.innerText = originalText;
-                    btnSave.disabled = false;
+                    hideLoading();
                 }
             } else {
                 alert('저장 실패: Google Script URL 미설정');
-                btnSave.innerText = originalText;
-                btnSave.disabled = false;
+                hideLoading();
             }
         }
 
         async function loadData() {
+            showLoading('데이터 불러오는 중...');
+            
             // legacy 로컬 데이터 삭제
             localStorage.removeItem('pinball_stats');
             
@@ -312,12 +338,16 @@
                 } catch (err) {
                     console.warn('Google Sheets 로드 실패:', err);
                     // 실패 시 조용히 넘어가거나 사용자에게 알림
+                } finally {
+                    hideLoading();
                 }
+            } else {
+                hideLoading();
             }
 
             if (cloudData) {
                 if (cloudData.values) state = { ...state, ...cloudData.values };
-                if (cloudData.excluded) excludedState = { ...excludedState, ...cloudData.excluded };
+                // Excluded state is not loaded, defaults to false
                 render();
             }
         }
