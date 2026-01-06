@@ -276,22 +276,31 @@
         }
 
         async function loadData() {
-            // Remove legacy local data if it exists
+            // legacy 로컬 데이터 삭제
             localStorage.removeItem('pinball_stats');
             
             let cloudData = null;
             
             if (GOOGLE_SCRIPT_URL) {
                 try {
-                    const response = await fetch(GOOGLE_SCRIPT_URL);
+                    // GAS는 리다이렉션이 발생하므로 fetch 옵션을 명시적으로 설정합니다.
+                    const response = await fetch(GOOGLE_SCRIPT_URL, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        }
+                    });
+                    
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    
                     const result = await response.json();
                     
                     if (result && result.updatedAt) {
                         cloudData = result;
                     }
                 } catch (err) {
-                    console.warn('Could not load from Google Sheets.', err);
-                    alert('데이터를 불러오는데 실패했습니다.');
+                    console.warn('Google Sheets 로드 실패. 시트 설정을 확인하세요.', err);
+                    // alert('데이터를 불러오는 중 보안 정책(CORS) 또는 네트워크 오류가 발생했습니다.');
                 }
             }
 
