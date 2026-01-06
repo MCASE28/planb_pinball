@@ -135,7 +135,7 @@
 
         .btn-nav {
             margin-top: 40px;
-            color: #8892b0;
+            color: #ffffff; /* White color */
             text-decoration: none;
             border-bottom: 1px solid transparent;
             transition: all 0.3s;
@@ -176,7 +176,7 @@
         <button class="btn-main" onclick="copyToClipboard()">클립보드로 복사</button>
     </div>
 
-    <a href="https://lazygyu.github.io/roulette/" target="_blank" class="btn-nav" onclick="copyToClipboard()">▶핀볼타러 가기◀</a>
+    <a href="https://lazygyu.github.io/roulette/" target="_blank" class="btn-nav" onclick="copyToClipboard(true)">▶핀볼타러 가기◀</a>
 
     <audio id="sound-updown" src="./assets/updown.mp3"></audio>
     <audio id="sound-save" src="./assets/save.mp3"></audio>
@@ -352,7 +352,7 @@
             }
         }
 
-        function copyToClipboard() {
+        function copyToClipboard(silent = false) {
             playSound('sound-clip');
             const result = users
                 .filter(user => !excludedState[user.name]) // Exclude grayed out users
@@ -363,12 +363,12 @@
                 }).join(', ');
 
             if (!result) {
-                alert('복사할 데이터가 없습니다.');
+                if (!silent) alert('복사할 데이터가 없습니다.');
                 return;
             }
 
             navigator.clipboard.writeText(result).then(() => {
-                alert('클립보드에 복사되었습니다: ' + result);
+                if (!silent) alert('클립보드에 복사되었습니다: ' + result);
             });
         }
 
