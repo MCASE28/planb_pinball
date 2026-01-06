@@ -132,11 +132,17 @@
             text-decoration: none;
             border-bottom: 1px solid transparent;
             transition: all 0.3s;
+            font-size: 2rem; /* 2x larger */
+            font-weight: 800; /* Bolder */
+            padding: 10px 20px;
+            background-color: rgba(17, 34, 64, 0.5); /* Slight background for readability */
+            border-radius: 8px;
         }
 
         .btn-nav:hover {
             color: var(--accent-color);
             border-bottom-color: var(--accent-color);
+            background-color: rgba(17, 34, 64, 1);
         }
 
         @media (max-width: 1024px) {
@@ -163,7 +169,7 @@
         <button class="btn-main" onclick="copyToClipboard()">클립보드로 복사</button>
     </div>
 
-    <a href="https://lazygyu.github.io/roulette/" target="_blank" class="btn-nav">룰렛으로 이동</a>
+    <a href="https://lazygyu.github.io/roulette/" target="_blank" class="btn-nav" onclick="copyToClipboard()">▶핀볼타러 가기◀</a>
 
     <script>
         // Supabase Configuration - Fill these with your actual keys
