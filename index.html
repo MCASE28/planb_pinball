@@ -251,9 +251,6 @@
                 updatedAt: timestamp
             };
 
-            // Local Save
-            localStorage.setItem('pinball_stats', JSON.stringify(dataToSave));
-
             // Google Sheets Save
             if (GOOGLE_SCRIPT_URL) {
                 try {
@@ -274,12 +271,14 @@
                     alert('저장 중 오류가 발생했습니다.');
                 }
             } else {
-                alert('로컬에 저장되었습니다. (Google Script URL 미설정)');
+                alert('저장 실패: Google Script URL 미설정');
             }
         }
 
         async function loadData() {
-            let localData = JSON.parse(localStorage.getItem('pinball_stats'));
+            // Remove legacy local data if it exists
+            localStorage.removeItem('pinball_stats');
+            
             let cloudData = null;
             
             if (GOOGLE_SCRIPT_URL) {
@@ -287,25 +286,18 @@
                     const response = await fetch(GOOGLE_SCRIPT_URL);
                     const result = await response.json();
                     
-                    // Apps Script standard response structure wrapper might be needed or raw JSON
-                    // Assuming raw JSON return from doGet
                     if (result && result.updatedAt) {
                         cloudData = result;
                     }
                 } catch (err) {
-                    console.warn('Could not sync with Google Sheets, using local data.', err);
+                    console.warn('Could not load from Google Sheets.', err);
+                    alert('데이터를 불러오는데 실패했습니다.');
                 }
             }
 
-            // Conflict Resolution
-            if (cloudData && (!localData || cloudData.updatedAt > localData.updatedAt)) {
-                localData = cloudData;
-                localStorage.setItem('pinball_stats', JSON.stringify(cloudData));
-            }
-
-            if (localData) {
-                if (localData.values) state = { ...state, ...localData.values };
-                if (localData.excluded) excludedState = { ...excludedState, ...localData.excluded };
+            if (cloudData) {
+                if (cloudData.values) state = { ...state, ...cloudData.values };
+                if (cloudData.excluded) excludedState = { ...excludedState, ...cloudData.excluded };
                 render();
             }
         }
