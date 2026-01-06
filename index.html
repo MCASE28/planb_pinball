@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>플랜비 핀볼 카운터</title>
+    <title>플랜비 핀볼 장부</title>
     <style>
         :root {
             --bg-color: #0a192f;
@@ -184,7 +184,7 @@
 
     <script>
         // Google Sheets Configuration (To be implemented)
-        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbycoDmoYgU3zaG3RiGUeKK6NMP8pc1QiOOu6ZQZnCpIomuJGk6M61KpCmExWsGyILNcjw/exec';
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzyNokzJmH2mjzT9sDLFATtPihDqc99CQEfjUFdKbh8CHu3rR_qcFXY3HbP71-TaZXosA/exec';
 
         const users = [
             { name: '밤베', img: './assets/밤베.png' },
@@ -283,11 +283,12 @@
             
             if (GOOGLE_SCRIPT_URL) {
                 try {
-                    // GAS는 리다이렉션이 발생하므로 fetch 옵션을 명시적으로 설정합니다.
+                    // cache: 'no-store'로 캐싱 방지, redirect: 'follow'로 리다이렉트 추적
                     const response = await fetch(GOOGLE_SCRIPT_URL, {
                         method: 'GET',
+                        redirect: 'follow', 
                         headers: {
-                            'Content-Type': 'application/json',
+                            'Content-Type': 'text/plain;charset=utf-8', // application/json 대신 text/plain 사용 권장 (Preflight 방지)
                         }
                     });
                     
@@ -299,8 +300,8 @@
                         cloudData = result;
                     }
                 } catch (err) {
-                    console.warn('Google Sheets 로드 실패. 시트 설정을 확인하세요.', err);
-                    // alert('데이터를 불러오는 중 보안 정책(CORS) 또는 네트워크 오류가 발생했습니다.');
+                    console.warn('Google Sheets 로드 실패:', err);
+                    // 실패 시 조용히 넘어가거나 사용자에게 알림
                 }
             }
 
