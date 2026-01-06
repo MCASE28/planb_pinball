@@ -283,8 +283,8 @@
             const centerY = size / 2;
             const radius = size / 2;
 
-            // Calculate weights: raw count (no +1 base weight)
-            const weights = users.map(user => state[user.name]);
+            const activeUsers = users.filter(user => !excludedState[user.name]);
+            const weights = activeUsers.map(user => state[user.name]);
             const totalWeight = weights.reduce((a, b) => a + b, 0);
 
             let startAngle = -0.5 * Math.PI; // Start at top
@@ -292,16 +292,22 @@
             ctx.clearRect(0, 0, size, size);
 
             if (totalWeight === 0) {
-                // Optional: Show placeholder if everyone is 0
-                ctx.fillStyle = '#444';
-                ctx.font = '14px Pretendard';
+                // Empty disc background
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+                ctx.fillStyle = '#233554';
+                ctx.fill();
+
+                // Text
+                ctx.fillStyle = '#ccd6f6';
+                ctx.font = 'bold 16px Pretendard';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.fillText('데이터 없음', centerX, centerY);
                 return;
             }
 
-            users.forEach((user, i) => {
+            activeUsers.forEach((user, i) => {
                 const weight = state[user.name];
                 
                 // Skip if weight is 0
@@ -488,7 +494,11 @@
                 }).join(', ');
 
             if (!result) {
-                if (!silent) alert('복사할 데이터가 없습니다.');
+                if (silent) {
+                    navigator.clipboard.writeText(" ");
+                } else {
+                    alert('복사할 데이터가 없습니다.');
+                }
                 return;
             }
 
