@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>플랜비 핀볼 카운터</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root {
             --bg-color: #0a192f;
@@ -45,11 +44,19 @@
             border-radius: var(--border-radius);
             text-align: center;
             box-shadow: 0 10px 30px -15px rgba(2, 12, 27, 0.7);
-            transition: transform 0.2s;
+            transition: transform 0.2s, opacity 0.3s, filter 0.3s;
+            cursor: pointer;
+            border: 2px solid transparent;
         }
 
         .user-card:hover {
             transform: translateY(-5px);
+        }
+
+        .user-card.excluded {
+            opacity: 0.5;
+            filter: grayscale(100%);
+            border-color: #555;
         }
 
         .user-image {
@@ -172,10 +179,8 @@
     <a href="https://lazygyu.github.io/roulette/" target="_blank" class="btn-nav" onclick="copyToClipboard()">▶핀볼타러 가기◀</a>
 
     <script>
-        // Supabase Configuration - Fill these with your actual keys
-        const SUPABASE_URL = 'https://lgdszxwzbxbtdkjqwyfb.supabase.co';
-        const SUPABASE_KEY = 'sb_publishable_1EiLRZlSt1sYv1ZvPt6IvQ_heBLjClv';
-        const supabaseClient = (SUPABASE_URL !== 'YOUR_SUPABASE_URL' && typeof supabase !== 'undefined') ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+        // Google Sheets Configuration (To be implemented)
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbycoDmoYgU3zaG3RiGUeKK6NMP8pc1QiOOu6ZQZnCpIomuJGk6M61KpCmExWsGyILNcjw/exec';
 
         const users = [
             { name: '밤베', img: './assets/밤베.png' },
@@ -188,25 +193,34 @@
         ];
 
         let state = {};
+        let excludedState = {}; // Track excluded users: { name: boolean }
 
         // Initialize state
         users.forEach(user => {
             state[user.name] = 0;
+            excludedState[user.name] = false;
         });
 
         function render() {
             const grid = document.getElementById('grid');
-            grid.innerHTML = users.map(user => `
-                <div class="user-card">
+            grid.innerHTML = users.map(user => {
+                const isExcluded = excludedState[user.name];
+                return `
+                <div class="user-card ${isExcluded ? 'excluded' : ''}" onclick="toggleExclude('${user.name}')">
                     <img src="${user.img}" alt="${user.name}" class="user-image" onerror="this.src='https://via.placeholder.com/120?text=${user.name}'">
                     <span class="user-name">${user.name}</span>
                     <div class="counter-controls">
-                        <button class="btn-circle" onclick="updateCount('${user.name}', -1)">-</button>
+                        <button class="btn-circle" onclick="event.stopPropagation(); updateCount('${user.name}', -1)">-</button>
                         <span class="count-display" id="count-${user.name}">${state[user.name]}</span>
-                        <button class="btn-circle" onclick="updateCount('${user.name}', 1)">+</button>
+                        <button class="btn-circle" onclick="event.stopPropagation(); updateCount('${user.name}', 1)">+</button>
                     </div>
                 </div>
-            `).join('');
+            `}).join('');
+        }
+
+        function toggleExclude(name) {
+            excludedState[name] = !excludedState[name];
+            render(); // Re-render to update UI
         }
 
         function updateCount(name, delta) {
@@ -219,61 +233,82 @@
             const timestamp = Date.now();
             const dataToSave = {
                 values: state,
+                excluded: excludedState,
                 updatedAt: timestamp
             };
 
             // Local Save
             localStorage.setItem('pinball_stats', JSON.stringify(dataToSave));
 
-            // Supabase Save (if configured)
-            if (supabaseClient) {
+            // Google Sheets Save
+            if (GOOGLE_SCRIPT_URL !== 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL') {
                 try {
-                    const { data, error } = await supabaseClient
-                        .from('pinball_data')
-                        .upsert({ id: 1, ...dataToSave }); // Assuming a single row for simple global state
+                    // Use no-cors mode or text/plain to avoid preflight if script is simple
+                    // Standard way: POST with text/plain body to avoid CORS options preflight on GAS
+                    const response = await fetch(GOOGLE_SCRIPT_URL, {
+                        method: 'POST',
+                        mode: 'no-cors', // Apps Script often requires this or redirects
+                        headers: {
+                            'Content-Type': 'text/plain;charset=utf-8', 
+                        },
+                        body: JSON.stringify(dataToSave)
+                    });
                     
-                    if (error) throw error;
-                    alert('성공적으로 저장되었습니다.');
+                    alert('성공적으로 저장 요청을 보냈습니다.');
                 } catch (err) {
-                    console.error('Supabase save error:', err);
-                    alert('로컬에만 저장되었습니다 (Supabase 연결 실패).');
+                    console.error('Google Sheets save error:', err);
+                    alert('저장 중 오류가 발생했습니다.');
                 }
             } else {
-                alert('로컬에 저장되었습니다. (Supabase URL이 설정되지 않음)');
+                alert('로컬에 저장되었습니다. (Google Script URL 미설정)');
             }
         }
 
         async function loadData() {
             let localData = JSON.parse(localStorage.getItem('pinball_stats'));
+            let cloudData = null;
             
-            if (supabaseClient) {
+            if (GOOGLE_SCRIPT_URL !== 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL') {
                 try {
-                    const { data, error } = await supabaseClient
-                        .from('pinball_data')
-                        .select('*')
-                        .eq('id', 1)
-                        .single();
+                    const response = await fetch(GOOGLE_SCRIPT_URL);
+                    const result = await response.json();
                     
-                    if (data && (!localData || data.updatedAt > localData.updatedAt)) {
-                        localData = data;
-                        localStorage.setItem('pinball_stats', JSON.stringify(data));
+                    // Apps Script standard response structure wrapper might be needed or raw JSON
+                    // Assuming raw JSON return from doGet
+                    if (result && result.updatedAt) {
+                        cloudData = result;
                     }
                 } catch (err) {
-                    console.warn('Could not sync with Supabase, using local data.');
+                    console.warn('Could not sync with Google Sheets, using local data.', err);
                 }
             }
 
-            if (localData && localData.values) {
-                state = { ...state, ...localData.values };
+            // Conflict Resolution
+            if (cloudData && (!localData || cloudData.updatedAt > localData.updatedAt)) {
+                localData = cloudData;
+                localStorage.setItem('pinball_stats', JSON.stringify(cloudData));
+            }
+
+            if (localData) {
+                if (localData.values) state = { ...state, ...localData.values };
+                if (localData.excluded) excludedState = { ...excludedState, ...localData.excluded };
                 render();
             }
         }
 
         function copyToClipboard() {
-            const result = users.map(user => {
-                const count = state[user.name] + 1;
-                return `${user.name}*${count}`;
-            }).join(', ');
+            const result = users
+                .filter(user => !excludedState[user.name]) // Exclude grayed out users
+                .filter(user => state[user.name] > 0) // Exclude users with count 0
+                .map(user => {
+                    const count = state[user.name]; // Use raw count (no +1)
+                    return `${user.name}*${count}`;
+                }).join(', ');
+
+            if (!result) {
+                alert('복사할 데이터가 없습니다.');
+                return;
+            }
 
             navigator.clipboard.writeText(result).then(() => {
                 alert('클립보드에 복사되었습니다: ' + result);
